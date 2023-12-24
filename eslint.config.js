@@ -3,13 +3,11 @@ import antfu from '@antfu/eslint-config'
 
 export default antfu(
   {
-    ignores: [
-      // eslint ignore globs here
-    ],
-  },
-  {
-    rules: {
-      // overrides
+    overrides: {
+      typescript: {
+        'ts/no-redeclare': ['off'],
+        'ts/no-use-before-define': ['off'],
+      },
     },
   },
 )
