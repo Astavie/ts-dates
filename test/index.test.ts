@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EpochDays, Gregorian, JANUARY, JSDate, LOCAL, SUNDAY, THURSDAY, TUESDAY, UTC } from '../src'
+import { Days, Gregorian, JANUARY, JSDate, LOCAL, SUNDAY, THURSDAY, TUESDAY, UTC } from '../src'
 
 describe('epoch days', () => {
   it('ecma conversion', () => {
@@ -17,20 +17,20 @@ describe('epoch days', () => {
     startloc.setSeconds(0)
     startloc.setMilliseconds(0)
 
-    expect(EpochDays.fromJS(startutc, UTC).toJS(UTC)).toEqual(startutc)
-    expect(EpochDays.fromJS(startloc, LOCAL).toJS(LOCAL)).toEqual(startloc)
+    expect(Days.fromJS(startutc, UTC).toJS(UTC)).toEqual(startutc)
+    expect(Days.fromJS(startloc, LOCAL).toJS(LOCAL)).toEqual(startloc)
   })
   it('the ecmascript epoch is day 0, a thursday', () => {
-    expect(EpochDays.fromJS(new JSDate(0), UTC).elapsedDays).toEqual(0)
-    expect(EpochDays.fromJS(new JSDate(0), UTC).getWeekday()).toEqual(THURSDAY)
+    expect(Days.fromJS(new JSDate(0), UTC).elapsedDays).toEqual(0)
+    expect(Days.fromJS(new JSDate(0), UTC).getWeekday()).toEqual(THURSDAY)
   })
   it('the moonlanding is on day -165, a sunday', () => {
-    expect(EpochDays.fromJS(new JSDate('July 20, 69 20:17:40 GMT+00:00'), UTC).elapsedDays).toEqual(-165)
-    expect(EpochDays.fromJS(new JSDate('July 20, 69 20:17:40 GMT+00:00'), UTC).getWeekday()).toEqual(SUNDAY)
+    expect(Days.fromJS(new JSDate('July 20, 69 20:17:40 GMT+00:00'), UTC).elapsedDays).toEqual(-165)
+    expect(Days.fromJS(new JSDate('July 20, 69 20:17:40 GMT+00:00'), UTC).getWeekday()).toEqual(SUNDAY)
   })
   it('the year 38 problem is on day 24855, a tuesday', () => {
-    expect(EpochDays.fromTimestamp(2_147_483_647 * 1000, UTC).elapsedDays).toEqual(24855)
-    expect(EpochDays.fromTimestamp(2_147_483_647 * 1000, UTC).getWeekday()).toEqual(TUESDAY)
+    expect(Days.fromTimestamp(2_147_483_647 * 1000, UTC).elapsedDays).toEqual(24855)
+    expect(Days.fromTimestamp(2_147_483_647 * 1000, UTC).getWeekday()).toEqual(TUESDAY)
   })
 })
 

@@ -1,4 +1,5 @@
 export type JSDate = globalThis.Date
+// eslint-disable-next-line ts/no-redeclare
 export const JSDate = globalThis.Date
 
 export const JANUARY = 1
@@ -32,47 +33,28 @@ export const LOCAL: TimeOffset = undefined
 export interface DateConstructor<T extends AnyDate> {
   fromTimestamp(timestamp: number, to: TimeOffset): T
   fromJS(date: JSDate, to: TimeOffset): T
-
-  fromEpochDays(days: EpochDays): T
+  fromDays(days: Days): T
+  from(date: AnyDate): T
 
   today(to: TimeOffset): T
 }
 
 type DateType<T> = DateConstructor<T extends new(...args: any[]) => (infer U extends AnyDate) ? U : never>
 
-export function dateType<T extends Pick<DateType<T>, 'fromEpochDays'>>(t: T): T & DateType<T> {
-  const c = t as any
-
-  c.fromTimestamp ??= function (timestamp: number, to: TimeOffset) {
-    return t.fromEpochDays(EpochDays.fromTimestamp(timestamp, to))
-  }
-  c.fromJS ??= function (date: JSDate, to: TimeOffset) {
-    return t.fromEpochDays(EpochDays.fromJS(date, to))
-  }
-  c.today ??= function (to: TimeOffset) {
-    return t.fromEpochDays(EpochDays.today(to))
-  }
-
-  return c
-}
-
 export abstract class Date<T extends Date<T>> {
   toTimestamp(to: TimeOffset): number {
     const offset = to ?? -new JSDate().getTimezoneOffset() * 60 * 1000
-    return this.toEpochDays().elapsedDays * 86400 * 1000 - offset
+    return this.toDays().elapsedDays * 86400 * 1000 - offset
   }
 
   toJS(to: TimeOffset): JSDate {
     return new JSDate(this.toTimestamp(to))
   }
 
-  abstract toEpochDays(): EpochDays
-  toGregorian(): Gregorian {
-    return Gregorian.fromEpochDays(this.toEpochDays())
-  }
+  abstract toDays(): Days
 
   getWeekday(): number {
-    const days = this.toEpochDays().elapsedDays
+    const days = this.toDays().elapsedDays
     return days >= -4 ? (days + 4) % 7 : (days + 5) % 7 + 6
   }
 }
@@ -81,7 +63,7 @@ export type AnyDate = Date<AnyDate>
 /**
  * Date stored as days since January 1, 1970
  */
-class _EpochDays extends Date<EpochDays> {
+export class Days extends Date<Days> {
   readonly elapsedDays: number
 
   constructor(elapsedDays: number) {
@@ -89,36 +71,60 @@ class _EpochDays extends Date<EpochDays> {
     this.elapsedDays = elapsedDays
   }
 
-  static fromTimestamp(timestamp: number, to: TimeOffset): EpochDays {
+  static fromTimestamp(timestamp: number, to: TimeOffset): Days {
     const offset = to ?? -new JSDate().getTimezoneOffset() * 60 * 1000
-    return new EpochDays(Math.floor((timestamp + offset) / 86400 / 1000))
+    return new Days(Math.floor((timestamp + offset) / 86400 / 1000))
   }
 
-  static fromJS(date: JSDate, to: TimeOffset): EpochDays {
-    return EpochDays.fromTimestamp(date.getTime(), to)
+  static fromJS(date: JSDate, to: TimeOffset): Days {
+    return Days.fromTimestamp(date.getTime(), to)
   }
 
-  static fromEpochDays(date: EpochDays): EpochDays {
+  static fromDays(date: Days): Days {
     return date
   }
 
-  static today(to: TimeOffset): EpochDays {
-    return EpochDays.fromTimestamp(JSDate.now(), to)
+  static from(date: AnyDate): Days {
+    return date.toDays()
   }
 
-  toEpochDays(): EpochDays {
+  static today(to: TimeOffset): Days {
+    return Days.fromTimestamp(JSDate.now(), to)
+  }
+
+  toDays(): Days {
     return this
   }
 }
-export type EpochDays = _EpochDays
-export const EpochDays = dateType(_EpochDays)
+
+export function dateType<T extends Pick<DateType<T>, 'fromDays'>>(t: T): T & DateType<T> {
+  const c = t as any
+
+  c.fromTimestamp ??= function (timestamp: number, to: TimeOffset) {
+    return t.fromDays(Days.fromTimestamp(timestamp, to))
+  }
+  c.fromJS ??= function (date: JSDate, to: TimeOffset) {
+    return t.fromDays(Days.fromJS(date, to))
+  }
+  c.from ??= function (date: AnyDate) {
+    if (date instanceof c)
+      return date
+
+    return t.fromDays(date.toDays())
+  }
+  c.today ??= function (to: TimeOffset) {
+    return t.fromDays(Days.today(to))
+  }
+
+  return c
+}
 
 /**
  * Proleptic Gregorian Date, where year 0 is 1 BCE.
  */
 export class _Gregorian extends Date<Gregorian> {
   static daysInMonth(year: number, month: number) {
-    if (month === FEBRUARY && Gregorian.isLeapYear(year))
+    if (month === FEBRUARY && _Gregorian.isLeapYear(year))
       return 29
 
     return [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
@@ -134,7 +140,7 @@ export class _Gregorian extends Date<Gregorian> {
 
   constructor(year: number, month: number, day: number) {
     super()
-    if (month < 1 || month > 12 || day < 1 || day > Gregorian.daysInMonth(year, month))
+    if (month < 1 || month > 12 || day < 1 || day > _Gregorian.daysInMonth(year, month))
       throw new Error(`Invalid date ${year}-${month}-${day}`)
 
     this.year = year
@@ -142,7 +148,7 @@ export class _Gregorian extends Date<Gregorian> {
     this.day = day
   }
 
-  static fromEpochDays(date: EpochDays): Gregorian {
+  static fromDays(date: Days): Gregorian {
     // https://stackoverflow.com/a/32158604
     const z = date.elapsedDays + 719468
     const era = Math.floor(z / 146097)
@@ -153,7 +159,7 @@ export class _Gregorian extends Date<Gregorian> {
     const mp = Math.floor((5 * doy + 2) / 153)
     const d = doy - Math.floor((153 * mp + 2) / 5) + 1
     const m = mp + (mp < 10 ? 3 : -9)
-    return new Gregorian(y + Number(m <= 2), m, d)
+    return new _Gregorian(y + Number(m <= 2), m, d)
   }
 
   toJS(to: TimeOffset): JSDate {
@@ -165,17 +171,18 @@ export class _Gregorian extends Date<Gregorian> {
     return this
   }
 
-  toEpochDays(): EpochDays {
+  toDays(): Days {
     // https://stackoverflow.com/a/32158604
     const y = this.month <= FEBRUARY ? this.year - 1 : this.year
     const era = Math.floor(y / 400)
     const yoe = y - era * 400
     const doy = Math.floor((153 * (this.month + (this.month > 2 ? -3 : 9)) + 2) / 5) + this.day - 1
     const doe = yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy
-    return new EpochDays(era * 146097 + doe - 719468)
+    return new Days(era * 146097 + doe - 719468)
   }
 }
 export type Gregorian = _Gregorian
+// eslint-disable-next-line ts/no-redeclare
 export const Gregorian = dateType(_Gregorian)
 
 export function CE(year: number): number {
