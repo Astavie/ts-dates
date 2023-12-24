@@ -12,12 +12,17 @@
     in
     {
       devShells = forEachSupportedSystem ({ pkgs }: {
-        default = pkgs.mkShell {
-          packages = with pkgs; [
+        default = with pkgs.nodePackages; pkgs.mkShell {
+          packages = [
             nodejs
-            nodePackages.pnpm
-            nodePackages.typescript-language-server
+            typescript-language-server
           ];
+          shellHook = ''
+            if [ ! -d "node_modules" ]; then
+              ${pnpm}/bin/pnpm i
+            fi
+            PATH=$PWD/node_modules/.bin:$PATH
+          '';
         };
       });
     };
